@@ -46,6 +46,8 @@ class SparkMonogoLoader():
             .config("spark.sql.warehouse.dir",spark_warehouse_path)\
             .enableHiveSupport()\
             .getOrCreate()
+        self.SparkInc.conf.set("spark.sql.shuffle.partitions",6)
+        self.SparkInc.conf.set("spark.executor.memory","4g")
 
     def getMongoScheme(self):
         if self.SQLScheme:
