@@ -42,7 +42,7 @@ class LDATest():
 
         # 计算得出word和index的list，得出index和word的映射关系
         wordsMap = hashingData.rdd.map(lambda x: (0, (x["words"], x["features"].indices.tolist()))).reduceByKey(
-            lambda x, y: (x[0] + y[0], x[1] + y[1])).toDF()
+            lambda x, y: (x[0] + y[0], x[1] + y[1])).toDF().cache()
         wordsList = wordsMap.select("_2._1").collect()[0]["_1"]
         indexList = wordsMap.select("_2._2").collect()[0]["_2"]
 
