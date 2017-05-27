@@ -13,14 +13,14 @@ if __name__ == "__main__":
     SPARK_HOST = 'local[*]'
     mongodbConf = dict(
         host=MAIN_HOST, database="shangHaiStudy", collection="courseRecord",
-        appName="factoryClient", sparkMaster="175.105.18.112",
+        appName="factoryClient", sparkMaster="175.102.18.112",
         sqlScheme={"name": "str", "id": "int",
                    "recordDate": "datetime"},
         sparkSC=None
     )
     mongodbConf = dict(
-        host=MAIN_HOST, database="openCourse", collection="college_html",
-        appName="ldaTest", sparkMaster="175.105.18.112",
+        host=MAIN_HOST, database="openCourse", collection="college_html_back_2",
+        appName="ldaTest", sparkMaster="175.102.18.112",
         sqlScheme={"html": "str","title": "str"},
         sparkSC=None
     )

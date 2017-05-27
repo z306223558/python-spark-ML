@@ -31,7 +31,7 @@ class SparkMonogoLoader():
         self.sparkAppName = conf['appName'] if "appName" in conf else ""
         self.sparkMaster = conf['sparkMaster'] if "sparkMaster" in conf else "local[*]"
         self.sparkMasterPort = conf['sparkMasterPort'] if "sparkMasterPort" in conf else 7077
-        self.sparkOtherConf = conf['otherConf'] if "othenrConf" in conf else {}
+        self.sparkOtherConf = conf['otherConf'] if "otherConf" in conf else {}
 
         self.sparkMasterUrl = "spark://" + self.sparkMaster + ":" + str(self.sparkMasterPort)
 
