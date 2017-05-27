@@ -36,7 +36,7 @@ class SparkMonogoLoader():
         self.sparkMasterUrl = "spark://" + self.sparkMaster + ":" + str(self.sparkMasterPort)
 
     def setConf(self):
-        self.sparkConfInc = SparkConf().setAppName(self.sparkAppName).setMaster(self.sparkMasterUrl)
+        self.sparkConfInc = SparkConf().setAppName(self.sparkAppName).setMaster(self.sparkMasterUrl).set("spark.sql.warehouse.dir","../")
         for k in self.sparkOtherConf:
             self.sparkConfInc.set(k, self.sparkOtherConf[k])
 

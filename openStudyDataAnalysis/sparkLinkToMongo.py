@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 -*-
-import datetime
 import sys
 
 reload( sys )
@@ -20,7 +19,7 @@ if __name__ == "__main__":
         sparkSC=None
     )
     mongodbConf = dict(
-        host=MAIN_HOST, database="openCourse", collection="college_html_back_2",
+        host=MAIN_HOST, database="openCourse", collection="college_html",
         appName="ldaTest", sparkMaster="175.105.18.112",
         sqlScheme={"html": "str","title": "str"},
         sparkSC=None
@@ -32,4 +31,5 @@ if __name__ == "__main__":
     sc = loader.SparkInc
     lda = LDATest(ctx,test_collection,sc=sc)
     lda.clustering()
+    sc.stop()
 
