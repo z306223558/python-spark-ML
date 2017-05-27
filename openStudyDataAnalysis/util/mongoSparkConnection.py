@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
-from pyspark import SparkConf, SparkContext
-from pyspark.sql import SQLContext
+from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 
 
@@ -17,7 +16,8 @@ class SparkMonogoLoader():
         # sparkSC
         if "sparkSC" in conf:
             self.SparkInc = conf['sparkSC']
-
+        # 设置运行环境
+        self.isLocal = conf['isLocal'] if "isLocal" in conf else True
         # mongo基本的配置
         self.host = conf["host"] if "host" in conf else "127.0.0.1"
         self.port = conf["port"] if "port" in conf else 27017
@@ -32,25 +32,20 @@ class SparkMonogoLoader():
         self.sparkMaster = conf['sparkMaster'] if "sparkMaster" in conf else "local[*]"
         self.sparkMasterPort = conf['sparkMasterPort'] if "sparkMasterPort" in conf else 7077
         self.sparkOtherConf = conf['otherConf'] if "otherConf" in conf else {}
-
         self.sparkMasterUrl = "spark://" + self.sparkMaster + ":" + str(self.sparkMasterPort)
 
-    def setConf(self):
-        self.sparkConfInc = SparkConf().setAppName(self.sparkAppName).setMaster(self.sparkMasterUrl).set("spark.sql.warehouse.dir","../")
-        for k in self.sparkOtherConf:
-            self.sparkConfInc.set(k, self.sparkOtherConf[k])
 
-    def getSparkInc(self):
-        if not self.SparkConfInc:
-            self.setConf()
-            self.SparkInc = SparkContext(self.sparkOtherConf)
-
-    def getSparkSQLInc(self):
-        if not self.SparkInc:
-            self.getSparkInc()
-            self.SparkSQLInc = SQLContext(self.SparkInc)
-        else:
-            self.SparkSQLInc = SQLContext(self.SparkInc)
+    def getSparkSession(self):
+        spark_warehouse_path = "file:///home/xiaojun/sparkmongo/spark-warehouse"
+        if self.isLocal:
+            spark_warehouse_path = "/Users/xiaojun/pythonDir/sparkmongo/spark-warehouse"
+        self.SparkInc = SparkSession\
+            .builder\
+            .master(self.sparkMasterUrl)\
+            .appName(self.sparkAppName)\
+            .config("spark.sql.warehouse.dir",spark_warehouse_path)\
+            .enableHiveSupport()\
+            .getOrCreate()
 
     def getMongoScheme(self):
         if self.SQLScheme:
@@ -82,21 +77,20 @@ class SparkMonogoLoader():
 
     def getMongodbInc(self):
         if not self.MongoConn:
-            if not self.SparkSQLInc:
-                self.getSparkSQLInc()
+            if not self.SparkInc:
+                self.getSparkSession()
                 # 执行获取scheme
                 self.getMongoScheme()
-                print self.SQLScheme
                 # 判断scheme是否存在
                 if self.SQLScheme:
-                    self.MongoConn = self.SparkSQLInc.read.schema(self.SQLScheme).format(
+                    self.MongoConn = self.SparkInc.read.schema(self.SQLScheme).format(
                         "com.mongodb.spark.sql").options(
                         uri="mongodb://" + self.host + ":" + str(self.port),
                         database=self.database,
                         collection=self.collection
                     )
                 else:
-                    self.MongoConn = self.SparkSQLInc.read.format("com.mongodb.spark.sql").options(
+                    self.MongoConn = self.SparkInc.read.format("com.mongodb.spark.sql").options(
                         uri="mongodb://" + self.host + ":" + str(self.port),
                         database=self.database,
                         collection=self.collection

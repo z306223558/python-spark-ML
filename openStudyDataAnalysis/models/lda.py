@@ -7,10 +7,9 @@ from pyspark.ml.clustering import LDA
 
 class LDATest():
 
-    def __init__(self, ctx, df, sc):
+    def __init__(self, ctx, df):
         self.ctx = ctx
         self.df = df
-        self.sc = sc
 
     def clustering(self):
 
