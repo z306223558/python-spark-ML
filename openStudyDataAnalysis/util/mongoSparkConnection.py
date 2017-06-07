@@ -41,12 +41,13 @@ class SparkMonogoLoader():
             spark_warehouse_path = "/Users/xiaojun/pythonDir/sparkmongo/spark-warehouse"
         self.SparkInc = SparkSession\
             .builder\
-            .master(self.sparkMasterUrl)\
+            .master("local[*]")\
             .appName(self.sparkAppName)\
             .config("spark.sql.warehouse.dir",spark_warehouse_path)\
             .config("spark.sql.shuffle.partitions",6)\
             .config("spark.work.memory","4g")\
             .getOrCreate()
+        return self.SparkInc
 
     def getMongoScheme(self):
         if self.SQLScheme:

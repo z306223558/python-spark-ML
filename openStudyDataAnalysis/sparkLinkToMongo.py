@@ -30,8 +30,8 @@ if __name__ == "__main__":
     WorldOpenCourseConf = dict(
         host=MAIN_HOST,                             #数据库IP
         database="openCourse",                      #数据库名
-        collection="college_html_back_2",           #mongo的collection名
-        isLocal=False,                               #是服务器模式还是本地
+        collection="college_html_back",           #mongo的collection名
+        isLocal=True,                               #是服务器模式还是本地
         appName="sparkMongoToLDA",                          #sparkApp的名字
         sparkMaster="175.102.18.112",               #spark集群的Ip
         sqlScheme={"html": "str", "title": "str"}   #导入时的可选field的名字和类型
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     #获取到数据的spark.dataFrame
     dataFrame = loader.dbCache().DateFrame
     #获取sparkSession示例
-    spark = loader.getSparkSession
+    spark = loader.getSparkSession()
     #实例化各算法的示例类，调用对应的实现方法
     lda = LDATest(spark, dataFrame)
     lda.clustering()
