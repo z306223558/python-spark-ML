@@ -3,55 +3,35 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 
 
-class SparkMonogoLoader():
-    SparkInc = None
+class SparkMongodbLoader():
+    spark = None
     SparkConfInc = None
     SparkSQLInc = None
     SQLScheme = None
     MongoConn = None
-    DateFrame = None
+    DataFrame = None
 
     def __init__(self, conf):
-
-        # sparkSC
-        if "sparkSC" in conf:
-            self.SparkInc = conf['sparkSC']
-        # 设置运行环境
-        self.isLocal = conf['isLocal'] if "isLocal" in conf else True
-        # mongo基本的配置
-        self.host = conf["host"] if "host" in conf else "127.0.0.1"
-        self.port = conf["port"] if "port" in conf else 27017
-        self.database = conf["database"] if "database" in conf else "test"
-        self.collection = conf["collection"] if "collection" in conf else "test"
-
-        # mongo scheme
-        self.SQLScheme = conf["sqlScheme"] if "sqlScheme" in conf else None
-
-        # sparkConf的基本配置
-        self.sparkAppName = conf['appName'] if "appName" in conf else ""
-        self.sparkMaster = conf['sparkMaster'] if "sparkMaster" in conf else "local[*]"
-        self.sparkMasterPort = conf['sparkMasterPort'] if "sparkMasterPort" in conf else 7077
-        self.sparkOtherConf = conf['otherConf'] if "otherConf" in conf else {}
-        self.sparkMasterUrl = "spark://" + self.sparkMaster + ":" + str(self.sparkMasterPort)
+        self.conf = conf
 
 
     def getSparkSession(self):
-        spark_warehouse_path = "file:///home/xiaojun/sparkmongo/spark-warehouse"
-        if self.isLocal:
-            spark_warehouse_path = "/Users/xiaojun/pythonDir/sparkmongo/spark-warehouse"
-        self.SparkInc = SparkSession\
+        """获取sparkSession的实例"""
+        self.spark = SparkSession\
             .builder\
             .master("local[*]")\
-            .appName(self.sparkAppName)\
-            .config("spark.sql.warehouse.dir",spark_warehouse_path)\
+            .appName(self.conf["appName"])\
+            .config("spark.sql.warehouse.dir",self.conf["sparkWarehousePath"])\
             .config("spark.sql.shuffle.partitions",6)\
             .config("spark.work.memory","4g")\
             .getOrCreate()
-        return self.SparkInc
+        return self.spark
 
-    def getMongoScheme(self):
-        if self.SQLScheme:
-            schemeInfo = self.SQLScheme
+
+    def getMongodbScheme(self):
+        """返回mongodb的load指定的字段"""
+        if self.conf["inputSqlScheme"]:
+            schemeInfo = self.conf["inputSqlScheme"]
             self.SQLScheme = []
             if isinstance(schemeInfo, dict):
                 # 格式化出scheme
@@ -78,34 +58,35 @@ class SparkMonogoLoader():
                 self.SQLScheme = StructType(self.SQLScheme)
 
     def getMongodbInc(self):
+        """获取mongodb连接实例"""
         if not self.MongoConn:
-            if not self.SparkInc:
+            if not self.spark:
                 self.getSparkSession()
-                # 执行获取scheme
-                self.getMongoScheme()
-                # 判断scheme是否存在
+                self.getMongodbScheme()
                 if self.SQLScheme:
-                    self.MongoConn = self.SparkInc.read.schema(self.SQLScheme).format(
+                    self.MongoConn = self.spark.read.schema(self.SQLScheme).format(
                         "com.mongodb.spark.sql").options(
-                        uri="mongodb://" + self.host + ":" + str(self.port),
-                        database=self.database,
-                        collection=self.collection
+                        uri=self.conf["inputUri"],
+                        database=self.conf["inputBase"],
+                        collection=self.conf["inputCollection"]
                     )
                 else:
-                    self.MongoConn = self.SparkInc.read.format("com.mongodb.spark.sql").options(
-                        uri="mongodb://" + self.host + ":" + str(self.port),
-                        database=self.database,
-                        collection=self.collection
+                    self.MongoConn = self.spark.read.format("com.mongodb.spark.sql").options(
+                        uri=self.conf["inputUri"],
+                        database=self.conf["inputBase"],
+                        collection=self.conf["inputCollection"]
                     )
 
     def dbLoad(self):
+        """执行数据导入"""
         if not self.MongoConn:
             self.getMongodbInc()
-        self.DateFrame = self.MongoConn.load()
+        self.DataFrame = self.MongoConn.load()
         return self
 
     def dbCache(self):
+        """执行数据导入并cache对应的DF"""
         if not self.MongoConn:
             self.getMongodbInc()
-        self.DateFrame = self.MongoConn.load().cache()
+        self.DataFrame = self.MongoConn.load().cache()
         return self

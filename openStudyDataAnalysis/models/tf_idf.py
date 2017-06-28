@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-import sys
-
 sys.path.append("../")
-from pyspark.ml.feature import HashingTF as MH, Tokenizer, CountVectorizer, StopWordsRemover, IDF
-from pyspark.ml.linalg import VectorUDT
+from pyspark.ml.feature import Tokenizer, StopWordsRemover, IDF
 from pyspark.ml.clustering import LDA
 from pyspark.mllib.feature import HashingTF as MLH
 from pyspark.mllib.util import MLUtils
-import re
+from clustering import Clustering
 
 
-class TF_IDFTest():
+class TF_IDFTest(Clustering):
 
     def __init__(self, ctx, df):
         self.ctx = ctx
@@ -34,7 +31,7 @@ class TF_IDFTest():
         self.df = remover.transform(self.df)
 
         mlHashingTF = MLH()
-        hashingData = self.df.rdd.map(lambda x:(x, mlHashingTF.transform(x[0]))).toDF().select("_1.removeWords","_2").toDF("words","hashingData")
+        hashingData = self.df.rdd.map(lambda x:(x, mlHashingTF.transform(x["removeWords"]))).toDF().toDF("words","hashingData")
 
         mapWords = hashingData.rdd.flatMap(lambda x: x["words"]).map(lambda w: (mlHashingTF.indexOf(w), w))
         mapList = list(set(mapWords.collect()))

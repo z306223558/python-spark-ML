@@ -9,8 +9,8 @@ from pyspark.mllib.feature import HashingTF as MLH
 from pyspark.ml.clustering import LDA
 
 
-class LDATest():
-    def __init__(self, ctx, df):
+class LDAClustering():
+    def __init__(self, ctx, df, params):
         self.ctx = ctx
         self.df = df
 
@@ -26,10 +26,10 @@ class LDATest():
         remover = StopWordsRemover(inputCol="words", outputCol="removeWords")
         self.df = remover.transform(self.df)
 
-        # 标记文本
-        wordsWithIds = self.df.rdd.zipWithIndex().map(
-            lambda x: (x[1], [y.replace(u"\u2019", "") for y in x[0]['removeWords']])).toDF().toDF("id", "words")
-        wordsWithIds.cache()
+        # # 标记文本
+        # wordsWithIds = self.df.rdd.zipWithIndex().map(
+        #     lambda x: (x[1], [y.replace(u"\u2019", "") for y in x[0]['removeWords']])).toDF().toDF("id", "words")
+        # wordsWithIds.cache()
 
         # 使用CountVector将文档转化为词频向量，导入到LDA算法计算
         # countVector = CountVectorizer(inputCol="words", outputCol="features", vocabSize=1000, minDF=2)
@@ -41,16 +41,21 @@ class LDATest():
         # hashingData = hashingTF.transform(wordsWithIds).cache()
 
         mlHashingTF = MLH()
-        hashingData = self.df.rdd.map(lambda x:(x, mlHashingTF.transform(x[0]))).toDF().select("_1.removeWords","_2").toDF("words","features")
-
-        mapWords = hashingData.rdd.flatMap(lambda x: x["words"]).map(lambda w: (mlHashingTF.indexOf(w), w))
-        mapList = mapWords.collect()
+        #得到单词和index的对应关系
+        mapWordsRdd = self.df.rdd.flatMap(lambda x : x["removeWords"]).map(lambda w: (mlHashingTF.indexOf(w),w))
+        mapList = mapWordsRdd.collect()
         bdMapList = self.ctx.sparkContext.broadcast(mapList)
+        print mapList
+
+        #hashingData
+        hashingData = self.df.rdd.map(lambda x:(x, mlHashingTF.transform(x["removeWords"])))\
+            .toDF()\
+            .toDF("words","features")
         MLHashingData = MLUtils.convertVectorColumnsToML(hashingData,"features")
 
 
         # 引入LDA，计算主题
-        lda = LDA(k=5, maxIter=50, optimizer="em")
+        lda = LDA(k=3, maxIter=10, optimizer="em")
         topics = lda.fit(MLHashingData)
         results = topics.describeTopics(20).cache()
         indices = results.select("topic").collect()
@@ -70,7 +75,7 @@ class LDATest():
         def getWordsFromIndex(index):
             #循环遍历bdMapList
             valueList = bdMapList.value
-            nullStr = "null"
+            nullStr = "没找到啊"
             for i in range(len(mapList)):
                 if mapList[i][0] == index:
                     return mapList[i][1]
