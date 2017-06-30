@@ -4,7 +4,6 @@ import sys
 from pyspark.mllib.util import MLUtils
 
 sys.path.append("../")
-from pyspark.ml.feature import HashingTF, IDF, Tokenizer, CountVectorizer, StopWordsRemover
 from pyspark.mllib.feature import HashingTF as MLH
 from pyspark.ml.clustering import LDA
 from clustering import Clustering
@@ -39,22 +38,12 @@ class TESTClustering(Clustering):
         termIndices = results.select("termIndices").collect()
         termWeights = results.select("termWeights").collect()
 
-
-        def getWordsFromIndex(index):
-            #循环遍历bdMapList
-            valueList = bdMapList.value
-            nullStr = "没找到啊"
-            for i in range(len(mapList)):
-                if mapList[i][0] == index:
-                    return mapList[i][1]
-            return nullStr
-
         # 循环打印数据
         for i in range(len(indices)):
             print "Topic_" + str(i) + ":"
             for j in range(len(termIndices[i]['termIndices'])):
                 try:
-                    print "" + getWordsFromIndex(termIndices[i]['termIndices'][j]) + "   " + str(
+                    print "" + self.getWordsFromIndex(termIndices[i]['termIndices'][j],bdMapList) + "   " + str(
                         termWeights[i]['termWeights'][j])
                 except Exception as e:
                     print e

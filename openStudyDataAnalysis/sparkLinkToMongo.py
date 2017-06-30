@@ -17,19 +17,10 @@ DEFAULT_DATA_CONF = dict(
     inputType="mongodb",
     inputUri="mongodb://127.0.0.1:27017/",
     inputBase="openCourse",
-    inputCollection="zhongwen",
+    inputCollection="college_html",
     inputSqlScheme=dict(
         html="str",
         title="str"
-    ),
-    #数据输出配置
-    outWay="console",
-    outDataType="mongodb",
-    outUri="mongodb://127.0.0.1:27017/",
-    outbase="openCourseOut",
-    outCollection="course_html_out",
-    outSqlSchema=dict(
-        results="str"
     )
 )
 
@@ -42,11 +33,21 @@ DEFAULT_CLUSTER_CONF = dict(
         describeTopics=10
     ),
     #数据处理相关配置
-    enableZH=True,
+    enableZH=False,
     allowNumber=False,
     limitCount=2,
-    stopWords="责任编辑 本文 情况 显示 来源 企业 月份 公司 发现 查看 亿元 市场",
-    defaultStopWords=[]
+    stopWords="",
+    defaultStopWords=[],
+    #数据输出配置
+    outWay="console",
+    outFilePath="../resultsData/",
+    outDataType="mongodb",
+    outUri="mongodb://127.0.0.1:27017/",
+    outbase="openCourseOut",
+    outCollection="course_html_out",
+    outSqlSchema=dict(
+        results="str"
+    )
 )
 
 

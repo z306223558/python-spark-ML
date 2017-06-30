@@ -44,11 +44,11 @@ class Clustering(object):
 
     def filterSpecailChar(self, df):
         def filterZHChar(str):
-            r = u'[a-zA-Z0-9’!"#$%&\'()*+,-./:;<=>?@，：。?★、…【】《》？“”‘’！[\\]^_`{|}~]+'
+            r = u'[a-zA-Z0-9’!"#$%&\'()*+,-./:;<=>?@，\\：。?★、…【】《》？“”‘’！[\\]^_`{|}~]+'
             return re.sub(r, '', str)
 
         def filterENChar(str):
-            r = u'[0-9’!"#$%&\'()*+,-./:;<=>?@，：。?★、…【】《》？“”‘’！[\\]^_`{|}~]+'
+            r = u'[0-9’!"#$%&\'()*+,-./:;<=>?@，：。\\?★、…【】《》？“”‘’！[\\]^_`{|}~]+'
             return re.sub(r, " ", str)
 
         dfW = df.rdd.map(lambda x: x["html"]).map(lambda y: Row(html=filterZHChar(y))).toDF()
@@ -116,4 +116,24 @@ class Clustering(object):
             return list(jiebaObj.cut(x))
         dfJB = df.rdd.map(lambda x: Row(words=getJiebaCut(x["html"]))).toDF()
         return dfJB
+
+    def getWordsFromIndex(self,index,bdMapList):
+        #循环遍历bdMapList
+        valueList = bdMapList.value
+        nullStr = "null"
+        for i in range(len(valueList)):
+            if valueList[i][0] == index:
+                return valueList[i][1]
+        return nullStr
+
+    def storeResultsToDataBase(self,results):
+        if self.params["outDataType"] == "mongodb":
+            results.write.format("com.mongodb.spark.sql")\
+                .mode("overwrite")\
+                .options(
+                    uri=self.params["outUri"],
+                    database=self.params["outbase"],
+                    collection=self.params["outCollection"]
+                ).load()
+
 

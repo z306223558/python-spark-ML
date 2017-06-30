@@ -4,86 +4,51 @@ import sys
 from pyspark.mllib.util import MLUtils
 
 sys.path.append("../")
-from pyspark.ml.feature import HashingTF, IDF, Tokenizer, CountVectorizer, StopWordsRemover
 from pyspark.mllib.feature import HashingTF as MLH
 from pyspark.ml.clustering import LDA
+from clustering import Clustering
 
 
-class LDAClustering():
+class LDAClustering(Clustering):
     def __init__(self, ctx, df, params):
+        super(LDAClustering, self).__init__(ctx, df, params)
         self.ctx = ctx
         self.df = df
+        self.LDAParams = self.params["clusteringParams"]
 
     def clustering(self):
 
-        # 先将文本分词
-        tokenizer = Tokenizer(inputCol="html", outputCol="words")
-        self.df = tokenizer.transform(self.df)
-        self.df = self.df.select("words")
-
-        # 过滤掉无用值
-        stopWords = [" "]
-        remover = StopWordsRemover(inputCol="words", outputCol="removeWords")
-        self.df = remover.transform(self.df)
-
-        # # 标记文本
-        # wordsWithIds = self.df.rdd.zipWithIndex().map(
-        #     lambda x: (x[1], [y.replace(u"\u2019", "") for y in x[0]['removeWords']])).toDF().toDF("id", "words")
-        # wordsWithIds.cache()
-
-        # 使用CountVector将文档转化为词频向量，导入到LDA算法计算
-        # countVector = CountVectorizer(inputCol="words", outputCol="features", vocabSize=1000, minDF=2)
-        # model = countVector.fit(wordsWithIds)
-        # hashingData = model.transform(wordsWithIds)
-
-        # # 发现使用CountVector不能产生一一对应的关系，只能使用hashing
-        # hashingTF = HashingTF(inputCol="words", outputCol="features")
-        # hashingData = hashingTF.transform(wordsWithIds).cache()
-
         mlHashingTF = MLH()
-        #得到单词和index的对应关系
-        mapWordsRdd = self.df.rdd.flatMap(lambda x : x["removeWords"]).map(lambda w: (mlHashingTF.indexOf(w),w))
+        # 通过hashingTF提供的indexOf方法，获取单词和索引的映射关系，然后将对应关系广播到各节点
+        mapWordsRdd = self.df.rdd.flatMap(lambda x: x["removeWords"]).map(lambda w: (mlHashingTF.indexOf(w), w))
         mapList = mapWordsRdd.collect()
         bdMapList = self.ctx.sparkContext.broadcast(mapList)
-        print mapList
 
-        #hashingData
-        hashingData = self.df.rdd.map(lambda x:(x, mlHashingTF.transform(x["removeWords"])))\
-            .toDF()\
-            .toDF("words","features")
-        MLHashingData = MLUtils.convertVectorColumnsToML(hashingData,"features")
+        # 特征转化，单词的向量形式转化
+        hashingData = self.df.rdd.map(lambda x: (x, mlHashingTF.transform(x["removeWords"]))) \
+            .toDF() \
+            .toDF("words", "features")
+        MLHashingData = MLUtils.convertVectorColumnsToML(hashingData, "features")
 
-
-        # 引入LDA，计算主题
-        lda = LDA(k=3, maxIter=10, optimizer="em")
+        # 引入LDA，计算主题  LDA的输入必须是一个dataSet，而且该dataSet必须有一个features字段作为数据的输入
+        # LDA的参数指定，其中k指示归档主题数目，maxIter指示最大迭代次数，次数越大则得出的结果越精准，optimizer是归档模式默认的em为本地归档，还有一个为 online模式待研究
+        lda = LDA(k=self.LDAParams["k"], maxIter=self.LDAParams["maxIter"], optimizer=self.LDAParams["optimizer"])
         topics = lda.fit(MLHashingData)
-        results = topics.describeTopics(20).cache()
+        results = topics.describeTopics(self.LDAParams["describeTopics"])
         indices = results.select("topic").collect()
         termIndices = results.select("termIndices").collect()
         termWeights = results.select("termWeights").collect()
-        # # 计算得出word和index的list，得出index和word的映射关系
-        # wordsMap = hashingData.rdd.map(lambda x: (0, (x["words"], x["features"].indices.tolist()))).reduceByKey(
-        #     lambda x, y: (x[0] + y[0], x[1] + y[1])).map(lambda x: (x[1][0], x[1][1])).toDF().cache()
-        #
-        # wordsMap.printSchema()
-        # wordsList = wordsMap.select("_1").collect()[0]["_1"]
-        # indexList = wordsMap.select("_2").collect()[0]["_2"]
 
-        # def getWordsFromIndex(targetId):
-        #     return wordsList[indexList.index(targetId)]
+        if self.LDAParams["outWay"] == "console":
+            for i in range(len(indices)):
+                print "Topic_" + str(i) + ":"
+                for j in range(len(termIndices[i]['termIndices'])):
+                    print "" + self.getWordsFromIndex(termIndices[i]['termIndices'][j],bdMapList) + "   " + str(
+                        termWeights[i]['termWeights'][j])
 
-        def getWordsFromIndex(index):
-            #循环遍历bdMapList
-            valueList = bdMapList.value
-            nullStr = "没找到啊"
-            for i in range(len(mapList)):
-                if mapList[i][0] == index:
-                    return mapList[i][1]
-            return nullStr
+        if self.LDAParams["outWay"] == "textFile":
+            import time
+            results.saveAsTextFile(self.LDAParams["outFilePath"] + self.__class__ +"_" +str(time.time()) + ".txt")
 
-        # 循环打印数据
-        for i in range(len(indices)):
-            print "Topic_" + str(i) + ":"
-            for j in range(len(termIndices[i]['termIndices'])):
-                print "" + getWordsFromIndex(termIndices[i]['termIndices'][j]) + "   " + str(
-                    termWeights[i]['termWeights'][j])
+        if self.LDAParams["outWay"] == "database":
+            self.storeResultsToDataBase(results)
